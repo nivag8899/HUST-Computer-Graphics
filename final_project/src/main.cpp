@@ -26,7 +26,9 @@ const float zfar = 800;
 GLuint vertex_array_object;		// VAO句柄
 GLuint vertex_buffer_object;	// VBO句柄
 GLuint element_buffer_object;	// EBO句柄
-GLuint texture_buffer_object;	// 纹理对象句柄
+GLuint texture_buffer_object_sun;	// 太阳纹理对象句柄
+GLuint texture_buffer_object_earth;	// 地球纹理对象句柄
+GLuint texture_buffer_object_moon;	// 月球纹理对象句柄
 int shader_program;				// 着色器程序句柄
 
 // 球面顶点数据
@@ -78,9 +80,12 @@ void generateBallIndices(std::vector<int>& sphereIndices) {
 
 // 创建纹理对象并加载纹理
 void loadTexture() {
-	//创建纹理对象
-	glGenTextures(1, &texture_buffer_object);
-	glBindTexture(GL_TEXTURE_2D, texture_buffer_object);
+	//太阳纹理
+
+	//创建纹理对象sun
+	glGenTextures(1, &texture_buffer_object_sun);
+	//绑定纹理对象sun
+	glBindTexture(GL_TEXTURE_2D, texture_buffer_object_sun);
 	//指定纹理的参数
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -90,7 +95,7 @@ void loadTexture() {
 	int width, height, nrchannels;//纹理长宽，通道数
 	stbi_set_flip_vertically_on_load(true);
 	//加载纹理图片
-	unsigned char* data = stbi_load("res/rock.jpg", &width, &height, &nrchannels, 0);
+	unsigned char* data = stbi_load("res/sun.jpg", &width, &height, &nrchannels, 0);
 
 	if (data)
 	{
@@ -99,6 +104,61 @@ void loadTexture() {
 	}
 	else
 		std::cout << "Failed to load texture" << std::endl;
+	glBindTexture(GL_TEXTURE_2D, 0);
+	stbi_image_free(data);//释放资源
+
+	//地球纹理
+
+	//创建纹理对象earth
+	glGenTextures(1, &texture_buffer_object_earth);
+	//绑定纹理对象earth
+	glBindTexture(GL_TEXTURE_2D, texture_buffer_object_earth);
+	//指定纹理的参数
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//加载纹理
+	//int width, height, nrchannels;//纹理长宽，通道数
+	stbi_set_flip_vertically_on_load(true);
+	//加载纹理图片
+	data = stbi_load("res/earth.jpg", &width, &height, &nrchannels, 0);
+
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);	//生成Mipmap纹理
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	glBindTexture(GL_TEXTURE_2D, 0);
+	stbi_image_free(data);//释放资源
+
+	//月球纹理
+
+	//创建纹理对象moon
+	glGenTextures(1, &texture_buffer_object_moon);
+	//绑定纹理对象moon
+	glBindTexture(GL_TEXTURE_2D, texture_buffer_object_moon);
+	//指定纹理的参数
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//加载纹理
+	//int width, height, nrchannels;//纹理长宽，通道数
+	stbi_set_flip_vertically_on_load(true);
+	//加载纹理图片
+	 data = stbi_load("res/moon.jpg", &width, &height, &nrchannels, 0);
+
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);	//生成Mipmap纹理
+	}
+	else
+		std::cout << "Failed to load texture" << std::endl;
+	glBindTexture(GL_TEXTURE_2D, 0);
 	stbi_image_free(data);//释放资源
 }
 
@@ -125,7 +185,7 @@ void editAndCompileShaderProgram() {
 		"in vec4 vColor;\n"			// 输入的颜色向量
 		"in vec2 myTexture;\n"		// 输入的纹理向量
 		"out vec4 FragColor;\n"		// 输出的颜色向量
-		"uniform sampler2D tex;\n"
+		"uniform sampler2D tex;\n" //sun
 		"void main()\n"
 		"{\n"
 		"    FragColor = texture(tex, myTexture) * vColor;\n"	// 顶点颜色和纹理混合
@@ -257,10 +317,19 @@ void Draw(void)
 	unsigned int colorLoc = glGetUniformLocation(shader_program, "color");
 
 	// 处理图形的颜色
+	/*
 	GLfloat vColor[3][4] = {
 		{ 1.0f, 0.3f, 0.3f, 1.0f },
 		{ 0.6f, 0.6f, 1.0f, 1.0f },
 		{ 0.8f, 0.8f, 0.8f, 1.0f } };
+	*/
+	
+	
+	GLfloat vColor[3][4] = {
+		{ 1.0f, 1.0f, 1.0f, 1.0f },
+		{ 1.0f, 1.0f, 1.0f, 1.0f },
+		{ 1.0f, 1.0f, 1.0f, 1.0f } };
+	
 
 	// 绑定VAO
 	glBindVertexArray(vertex_array_object);
@@ -284,7 +353,8 @@ void Draw(void)
 	// 画太阳
 	{
 		GLfloat angle_sun_self = day * (360.0f / 25.05f);	// 自转角
-
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_sun);
 		/*
 		* translate(x, y, z)：图形平移（相对于显示区域而言）
 		* 此处x，y=0表示在屏幕中间，z=-10表示图形在屏幕里面（离摄像机）10个单位距离
@@ -298,6 +368,8 @@ void Draw(void)
 	
 	// 画地球
 	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_earth);
 		float a_earth = 9.0f;	// 椭圆长轴
 		float b_earth = 3.0f;	// 椭圆短轴
 		GLfloat angle_earth = day * (360.0f / 365.00f);	// 公转角
@@ -316,6 +388,8 @@ void Draw(void)
 	
 	// 画月球
 	{
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_moon);
 		GLfloat angle_moon = day * (360.0f / (365.00f / 12.00f));	// 公转角
 		GLfloat angle_moon_self = day * (360.0f / 27.32f);			// 自转角
 
@@ -409,7 +483,7 @@ int main()
 
 	//解绑并删除纹理
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glDeleteTextures(1, &texture_buffer_object);
+	glDeleteTextures(1, &texture_buffer_object_sun);
 
 	glfwDestroyWindow(window);
 
