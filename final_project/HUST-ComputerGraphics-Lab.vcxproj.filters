@@ -22,4 +22,8 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="light.fs" />
+    <None Include="light.vs" />
+  </ItemGroup>
 </Project>

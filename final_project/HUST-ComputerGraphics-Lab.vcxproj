@@ -22,6 +22,10 @@
     <ClCompile Include="..\glad.c" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="light.fs" />
+    <None Include="light.vs" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{D81A9E72-A8AB-4EFD-B8EA-A995949F23B9}</ProjectGuid>

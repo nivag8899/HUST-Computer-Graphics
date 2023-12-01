@@ -5,6 +5,12 @@
 #include <vmath.h>
 #include <vector>
 #include <Windows.h>
+#include <fstream>
+#include <sstream>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -29,7 +35,8 @@ GLuint element_buffer_object;	// EBO句柄
 GLuint texture_buffer_object_sun;	// 太阳纹理对象句柄
 GLuint texture_buffer_object_earth;	// 地球纹理对象句柄
 GLuint texture_buffer_object_moon;	// 月球纹理对象句柄
-int shader_program;				// 着色器程序句柄
+int shader_program_tex;				// 纹理着色器程序句柄
+int shader_program_light;          //太阳光源着色器程序句柄
 
 // 球面顶点数据
 std::vector<float> sphereVertices;
@@ -38,6 +45,79 @@ const int Y_SEGMENTS = 50;
 const int X_SEGMENTS = 50;
 const float Radio = 2.0;
 const GLfloat  PI = 3.14159265358979323846f;
+
+
+GLuint lightVertexArrayObject;
+GLuint lightVertexBufferObject;
+
+// 创建光源几何体的函数
+void createLightGeometry() {
+	// 光源的顶点数据，表示一个简单的立方体
+	float lightVertices[] = {
+		 -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	   -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+	   -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+	   -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	   -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+	   -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+
+	   -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+	   -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	   -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	   -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+	   -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+	   -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+	   -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+	   -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+	   -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+	   -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+	   -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+	   -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+	};
+
+	// 生成并绑定 VAO
+	glGenVertexArrays(1, &lightVertexArrayObject);
+	glBindVertexArray(lightVertexArrayObject);
+
+	// 生成并绑定 VBO
+	glGenBuffers(1, &lightVertexBufferObject);
+	glBindBuffer(GL_ARRAY_BUFFER, lightVertexBufferObject);
+
+	// 将光源的顶点数据绑定到 VBO
+	glBufferData(GL_ARRAY_BUFFER, sizeof(lightVertices), lightVertices, GL_STATIC_DRAW);
+
+	// 设置顶点属性指针
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	// 解绑 VAO
+	glBindVertexArray(0);
+}
+
 
 // 生成球的顶点和纹理顶点
 void generateBallVerticles(std::vector<float>& sphereVertices) {
@@ -113,8 +193,35 @@ void loadAllTextures() {
 }
 
 
-// 编写并编译着色器程序
-void editAndCompileShaderProgram() {
+// 从文件中读取着色器代码
+std::string readShaderFromFile(const char* filePath) {
+	std::string shaderCode;
+	std::ifstream shaderFile;
+
+	// 保证 ifstream 对象可以抛出异常：
+	shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	try {
+		// 打开文件
+		shaderFile.open(filePath);
+		std::stringstream shaderStream;
+
+		// 读取文件的缓冲内容到数据流中
+		shaderStream << shaderFile.rdbuf();
+
+		// 关闭文件处理器
+		shaderFile.close();
+
+		// 转换数据流到string
+		shaderCode = shaderStream.str();
+	}
+	catch (std::ifstream::failure& e) {
+		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+	}
+
+	return shaderCode;
+}
+// 编写并编译纹理着色器程序
+void editAndCompileShaderProgramForTexture() {
 	// 顶点着色器和片段着色器源码
 	const char* vertex_shader_source =
 		"#version 330 core\n"
@@ -168,14 +275,14 @@ void editAndCompileShaderProgram() {
 		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << info_log << std::endl;
 	}
 	// 链接顶点和片段着色器至一个着色器程序
-	shader_program = glCreateProgram();
-	glAttachShader(shader_program, vertex_shader);
-	glAttachShader(shader_program, fragment_shader);
-	glLinkProgram(shader_program);
+	shader_program_tex = glCreateProgram();
+	glAttachShader(shader_program_tex, vertex_shader);
+	glAttachShader(shader_program_tex, fragment_shader);
+	glLinkProgram(shader_program_tex);
 	// 检查着色器是否成功链接，如果链接失败，打印错误信息
-	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+	glGetProgramiv(shader_program_tex, GL_LINK_STATUS, &success);
 	if (!success) {
-		glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+		glGetProgramInfoLog(shader_program_tex, 512, NULL, info_log);
 		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << info_log << std::endl;
 	}
 
@@ -184,8 +291,53 @@ void editAndCompileShaderProgram() {
 	glDeleteShader(fragment_shader);
 
 	// 使用着色器程序
-	glUseProgram(shader_program);
+	glUseProgram(shader_program_tex);
 }
+
+// 创建并编译着色器程序
+int createShaderProgram(const char* vertex_shader_source, const char* fragment_shader_source) {
+	int success;
+	char info_log[512];
+
+	// 顶点着色器
+	int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
+	glCompileShader(vertex_shader);
+	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+		std::cout << "lightERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << info_log << std::endl;
+	}
+
+	// 片段着色器
+	int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
+	glCompileShader(fragment_shader);
+	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
+		std::cout << "lightERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << info_log << std::endl;
+	}
+
+	// 链接着色器程序
+	int shader_program = glCreateProgram();
+	glAttachShader(shader_program, vertex_shader);
+	glAttachShader(shader_program, fragment_shader);
+	glLinkProgram(shader_program);
+	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+	if (!success) {
+		glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+		std::cout << "lightERROR::SHADER::PROGRAM::LINKING_FAILED\n" << info_log << std::endl;
+	}
+
+	// 删除着色器
+	glDeleteShader(vertex_shader);
+	glDeleteShader(fragment_shader);
+
+	return shader_program;
+}
+
+
 
 void initial(void)
 {
@@ -221,7 +373,15 @@ void initial(void)
 	loadAllTextures();
 
 	// 编写并编译着色器程序
-	editAndCompileShaderProgram();
+	editAndCompileShaderProgramForTexture();
+
+	//编译光照着色器程序
+	// 
+	createLightGeometry();
+	//读light.vs 读light.fs
+	std::string lightVertexShaderSource = readShaderFromFile("light.vs");
+	std::string lightFragmentShaderSource = readShaderFromFile("light.fs");
+	shader_program_light = createShaderProgram(lightVertexShaderSource.c_str(), lightFragmentShaderSource.c_str());
 
 	// 设定点线面的属性
 	glPointSize(3);	// 设置点的大小
@@ -261,16 +421,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void Draw(void)
 {
 	// 清空颜色缓冲
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	unsigned int transformLoc = glGetUniformLocation(shader_program, "transform");
-	unsigned int colorLoc = glGetUniformLocation(shader_program, "color");
+	unsigned int transformLoc = glGetUniformLocation(shader_program_tex, "transform");
+	unsigned int colorLoc = glGetUniformLocation(shader_program_tex, "color");
 	// 设置纹理单元的值
 	
-
-
-		
 	GLfloat vColor[3][4] = {
 		{ 1.0f, 1.0f, 1.0f, 1.0f },
 		{ 1.0f, 1.0f, 1.0f, 1.0f },
@@ -297,8 +454,8 @@ void Draw(void)
 	}
 	
 	// 画太阳
-	{
-		glUniform1i(glGetUniformLocation(shader_program, "tex"), 0);  // 太阳纹理单元为0
+		{
+		glUniform1i(glGetUniformLocation(shader_program_tex, "tex"), 0);  // 太阳纹理单元为0
 		GLfloat angle_sun_self = day * (360.0f / 25.05f);	// 自转角
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_sun);
@@ -313,9 +470,12 @@ void Draw(void)
 		glDrawElements(GL_TRIANGLES, X_SEGMENTS * Y_SEGMENTS * 6, GL_UNSIGNED_INT, 0);	// 绘制三角形
 	}
 	
+	
+
+	
 	// 画地球
 	{
-		glUniform1i(glGetUniformLocation(shader_program, "tex"), 1);  // 地球纹理单元为1
+		glUniform1i(glGetUniformLocation(shader_program_tex, "tex"), 1);  // 地球纹理单元为1
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_earth);
 		float a_earth = 9.0f;	// 椭圆长轴
@@ -336,7 +496,7 @@ void Draw(void)
 	
 	// 画月球
 	{
-		glUniform1i(glGetUniformLocation(shader_program, "tex"), 2);  // 月球纹理单元为2
+		glUniform1i(glGetUniformLocation(shader_program_tex, "tex"), 2);  // 月球纹理单元为2
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, texture_buffer_object_moon);
 		GLfloat angle_moon = day * (360.0f / (365.00f / 12.00f));	// 公转角
@@ -353,6 +513,28 @@ void Draw(void)
 	
 	// 解除绑定
 	glBindVertexArray(0);
+
+
+	// 渲染光源
+	glUseProgram(shader_program_light);
+
+	// 使用太阳的位置信息作为光源的位置
+	vmath::vec3 lightPosition(0.0f, 0.0f, -10.0f); // 你可以根据太阳的位置进行调整
+
+	// 设置光源的模型矩阵
+	vmath::mat4 trans_light = vmath::translate(lightPosition);
+	glUniformMatrix4fv(glGetUniformLocation(shader_program_light, "transform"), 1, GL_FALSE, trans_light);
+
+	// 设置光源的颜色
+	glUniform3f(glGetUniformLocation(shader_program_light, "lightColor"), 1.0f, 1.0f, 1.0f);
+
+	// 绑定VAO和绘制光源（使用简化的几何体，如立方体表示光源）
+	glBindVertexArray(lightVertexArrayObject);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(0);
+
+	// 恢复使用原始的着色器程序
+	glUseProgram(shader_program_tex);
 
 }
 
@@ -415,7 +597,7 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		day+=1.2;
+		day+=0.2;
 		if (day >= 365)
 			day = 0;
 		Draw();
